@@ -1,6 +1,8 @@
 <?php 
 namespace Clystnet\Vtiger;
 
+use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Client;
 use Storage;
 use Config;
 
@@ -9,12 +11,15 @@ class Vtiger
 	protected $url;
     protected $username;
     protected $accesskey;
+    protected $client;
 
 	public function __construct() {
         // set the API url and username
         $this->url = Config::get('vtiger.url');
         $this->username = Config::get('vtiger.username');
         $this->accesskey = Config::get('vtiger.accesskey');
+
+        $this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
     }
 
 	protected function sessionid() 
@@ -44,29 +49,20 @@ class Vtiger
 		// Create unique key using combination of challengetoken and accesskey
 		$generatedkey = md5($token . $this->accesskey);
 
-		$post = array(
-			'operation' => 'login', 
-			'username' => $this->username, 
-			'accessKey' => $generatedkey
-		);
-
-		$ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		curl_close($ch);
+		// login using username and accesskey
+		$response = $this->client->request('POST', $this->url, [
+		    'form_params' => [
+		       	'operation' => 'login', 
+				'username' => $this->username, 
+				'accessKey' => $generatedkey
+		    ]
+		]);
 
 		// decode the response
-        $login_result = json_decode($result);
+        $login_result = json_decode($response->getBody()->getContents());
 
         // If api login failed
-		if($httpcode !== 200 || !$login_result->success) {
+		if($response->getStatusCode() !== 200 || !$login_result->success) {
 			return json_encode(array(
     			'success' => false,
     			'message' => $login_result->error->message
@@ -84,31 +80,25 @@ class Vtiger
 		$bool = false;
 
 		do {
-			$ch = curl_init(); 
-
-			curl_setopt($ch, CURLOPT_URL, $this->url . "?operation=getchallenge&username=" . $this->username);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-			//curl_setopt($ch, CURLOPT_HEADER, false); 
-
-			$result = curl_exec($ch);
-			$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-			if(curl_error($ch)) {
-			    die('Error: "' . curl_error($ch) . '" - Code: ' . curl_errno($ch));
-			}
-
-			curl_close($ch);
+			// perform API GET request
+	        $response = $this->client->request('GET', $this->url, [
+	        	'query' => [
+	        		'operation' => 'getchallenge',
+	        		'username' => $this->username
+	        	]
+	        ]);
 
 	        // decode the response
-			$challenge = json_decode($result);
+			$challenge = json_decode($response->getBody());
 
 			// If challenge failed
-			if($httpcode === 200 || $challenge->success) {
+			if($response->getStatusCode() === 200 || $challenge->success) {
 				$bool = true;
 			}
 		}
 		while(!$bool);
 
+		// Everything ok so create a token from response
 		$json = array(
 			'token' => $challenge->result->token,
 			'expireTime' => $challenge->result->expireTime
@@ -119,19 +109,16 @@ class Vtiger
 
 	protected function close($sessionid)
 	{
-		$ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url . "?operation=logout&sessionName=" . $sessionid);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_HEADER, false); 
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		curl_close($ch);
+		// send a request using a database query to get back any user with the email from the form POST request 
+		$response = $this->client->request('GET', $this->url, [
+			'query' => [
+				'operation' => 'logout',
+				'sessionName' => $sessionid
+			]
+		]);
 
 		// decode the response
-		$data = json_decode($result);
+		$data = json_decode($response->getBody()->getContents());
 
 		return $data;
 	}
@@ -144,23 +131,17 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		$ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url . "?operation=query&sessionName=" . $sessionid . "&query=" . urlencode($query));
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_HEADER, false); 
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		if(curl_error($ch)) {
-		    die('Error: "' . curl_error($ch) . '" - Code: ' . curl_errno($ch));
-		}
-
-		curl_close($ch);
+		// send a request using a database query to get back any user with the email from the form POST request 
+		$response = $this->client->request('GET', $this->url, [
+			'query' => [
+				'operation' => 'query',
+				'sessionName' => $sessionid,
+				'query' => $query
+			]
+		]);
 
 		// decode the response
-		$data = json_decode($result);
+		$data = json_decode($response->getBody()->getContents());
 
 		self::close($sessionid);
 
@@ -175,19 +156,17 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		$ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url . "?operation=retrieve&sessionName=" . $sessionid . "&id=" . $id);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_HEADER, false); 
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		curl_close($ch);
+		// send a request using a database query to get back any user with the email from the form POST request 
+		$response = $this->client->request('GET', $this->url, [
+			'query' => [
+				'operation' => 'retrieve',
+				'sessionName' => $sessionid,
+				'id' => $id
+			]
+		]);
 
 		// decode the response
-		$data = json_decode($result);
+		$data = json_decode($response->getBody()->getContents());
 
 		self::close($sessionid);
 
@@ -202,27 +181,18 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		$post = array(
-			'operation' => 'create',
-			'sessionName' => $sessionid,
-			'element' => $data,
-            'elementType' => $elem
-		);
-
-		$ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		curl_close($ch);
+		// send a request using a database query to get back any user with the email from the form POST request 
+		$response = $this->client->request('POST', $this->url, [
+			'form_params' => [
+				'operation' => 'create',
+				'sessionName' => $sessionid,
+				'element' => $data,
+                'elementType' => $elem
+			]
+		]);
 
 		// decode the response
-		$data = json_decode($result);
+		$data = json_decode($response->getBody()->getContents());
 
 		self::close($sessionid);
 
@@ -238,26 +208,16 @@ class Vtiger
 		}
 
 		// send a request using a database query to get back any user with the email from the form POST request 
-		$post = array(
-            'operation' => 'update', 
-            'sessionName' => $sessionid,
-            'element' => json_encode($object),
-        );
+		$response = $this->client->request('POST', $this->url, [
+			'form_params' => [
+                'operation' => 'update', 
+                'sessionName' => $sessionid,
+                'element' => json_encode($object),
+            ]
+        ]);
 
-        $ch = curl_init(); 
-
-		curl_setopt($ch, CURLOPT_URL, $this->url);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-
-		$result = curl_exec($ch);
-		$httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-		curl_close($ch);
-
-		// decode the response
-		$data = json_decode($result);
+        // decode the response
+		$data = json_decode($response->getBody()->getContents());
 
 		self::close($sessionid);
 
