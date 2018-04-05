@@ -1,4 +1,4 @@
-# Vtiger (Laravel 5 Package)
+﻿# Vtiger (Laravel 5 Package)
 Use the Vtiger webservice (REST) API from within Laravel for operations Create, Retrieve and Update.
 
 See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/vtigercrm/developers/third-party-app-integration.html) 
@@ -17,7 +17,7 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
 2. Then in your config/app.php add the following to the providers array:
 
     ```
-	Clystnet\Vtiger\VtigerServiceProvider::class,
+    Clystnet\Vtiger\VtigerServiceProvider::class,
     ```
 
 3. In the same config/app.php add the following to the aliases array:
@@ -124,18 +124,3 @@ Please report any issue you find in the issues page. Pull requests are more than
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
