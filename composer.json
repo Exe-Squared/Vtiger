@@ -1,16 +1,27 @@
 {
     "name": "clystnet/vtiger",
-    "description": "Package to run Vtiger Webservice API",
     "type": "laravel",
-    "require": {},
+    "description": "Package to run Vtiger Webservice API",
+    "keywords": ["laravel", "vtiger"],
+    "homepage": "https://github.com/Clystnet/Vtiger",
     "license": "MIT",
     "authors": [
         {
             "name": "Adam Godfrey",
-            "email": "adam.godfrey@clystnet.com"
+            "email": "adam.godfrey@clystnet.com",
+            "homepage": "https://www.clystnet.com",
+            "role": "Developer",
         }
     ],
+    "require": {
+        "php": ">=5.6.0"
+    },
     "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Clystnet\\Vtiger\\": "src/"
+        }
+    },
     "extra": {
         "laravel": {
             "providers": [
