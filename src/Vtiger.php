@@ -131,21 +131,23 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		// send a request using a database query to get back any user with the email from the form POST request 
-		$response = $this->client->request('GET', $this->url, [
-			'query' => [
-				'operation' => 'query',
-				'sessionName' => $sessionid,
-				'query' => $query
-			]
-		]);
+		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
+			// send a request using a database query to get back any user with the email from the form POST request 
+			$response = $this->client->request('GET', $this->url, [
+				'query' => [
+					'operation' => 'query',
+					'sessionName' => $sessionid,
+					'query' => $query
+				]
+			]);
 
-		// decode the response
-		$data = json_decode($response->getBody()->getContents());
+			// decode the response
+			$data = json_decode($response->getBody()->getContents());
+		}
 
 		self::close($sessionid);
 
-		return $data;
+		return (isset($data->success)) ? $data : false;
 	}
 
 	public function retrieve($id)
@@ -156,21 +158,23 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		// send a request using a database query to get back any user with the email from the form POST request 
-		$response = $this->client->request('GET', $this->url, [
-			'query' => [
-				'operation' => 'retrieve',
-				'sessionName' => $sessionid,
-				'id' => $id
-			]
-		]);
+		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
+			// send a request using a database query to get back any user with the email from the form POST request 
+			$response = $this->client->request('GET', $this->url, [
+				'query' => [
+					'operation' => 'retrieve',
+					'sessionName' => $sessionid,
+					'id' => $id
+				]
+			]);
 
-		// decode the response
-		$data = json_decode($response->getBody()->getContents());
+			// decode the response
+			$data = json_decode($response->getBody()->getContents());
+		}
 
 		self::close($sessionid);
 
-		return $data;
+		return (isset($data->success)) ? $data : false;
 	}
 
 	public function create($elem, $data)
@@ -181,22 +185,24 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		// send a request using a database query to get back any user with the email from the form POST request 
-		$response = $this->client->request('POST', $this->url, [
-			'form_params' => [
-				'operation' => 'create',
-				'sessionName' => $sessionid,
-				'element' => $data,
-                'elementType' => $elem
-			]
-		]);
+		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
+			// send a request using a database query to get back any user with the email from the form POST request 
+			$response = $this->client->request('POST', $this->url, [
+				'form_params' => [
+					'operation' => 'create',
+					'sessionName' => $sessionid,
+					'element' => $data,
+	                'elementType' => $elem
+				]
+			]);
 
-		// decode the response
-		$data = json_decode($response->getBody()->getContents());
+			// decode the response
+			$data = json_decode($response->getBody()->getContents());
+		}
 
 		self::close($sessionid);
 
-		return $data;
+		return (isset($data->success)) ? $data : false;
 	}
 
 	public function update($object)
@@ -207,20 +213,22 @@ class Vtiger
 			return $sessionid->message;
 		}
 
-		// send a request using a database query to get back any user with the email from the form POST request 
-		$response = $this->client->request('POST', $this->url, [
-			'form_params' => [
-                'operation' => 'update', 
-                'sessionName' => $sessionid,
-                'element' => json_encode($object),
-            ]
-        ]);
+		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
+			// send a request using a database query to get back any user with the email from the form POST request 
+			$response = $this->client->request('POST', $this->url, [
+				'form_params' => [
+	                'operation' => 'update', 
+	                'sessionName' => $sessionid,
+	                'element' => json_encode($object),
+	            ]
+	        ]);
 
-        // decode the response
-		$data = json_decode($response->getBody()->getContents());
+	        // decode the response
+			$data = json_decode($response->getBody()->getContents());
+		}
 
 		self::close($sessionid);
 
-		return $data;
+		return (isset($data->success)) ? $data : false;
 	}
 }
