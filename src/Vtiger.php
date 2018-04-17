@@ -9,18 +9,18 @@ use Config;
 class Vtiger
 {
 	protected $url;
-    protected $username;
-    protected $accesskey;
-    protected $client;
+    	protected $username;
+    	protected $accesskey;
+    	protected $client;
 
 	public function __construct() {
-        // set the API url and username
-        $this->url = Config::get('vtiger.url');
-        $this->username = Config::get('vtiger.username');
-        $this->accesskey = Config::get('vtiger.accesskey');
+        	// set the API url and username
+        	$this->url = Config::get('vtiger.url');
+        	$this->username = Config::get('vtiger.username');
+        	$this->accesskey = Config::get('vtiger.accesskey');
 
-        $this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
-    }
+        	$this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
+   	 }
 
 	protected function sessionid() 
 	{
@@ -51,22 +51,22 @@ class Vtiger
 
 		// login using username and accesskey
 		$response = $this->client->request('POST', $this->url, [
-		    'form_params' => [
-		       	'operation' => 'login', 
+		    	'form_params' => [
+		       		'operation' => 'login', 
 				'username' => $this->username, 
 				'accessKey' => $generatedkey
-		    ]
+		    	]
 		]);
 
 		// decode the response
-        $login_result = json_decode($response->getBody()->getContents());
+        	$login_result = json_decode($response->getBody()->getContents());
 
-        // If api login failed
+        	// If api login failed
 		if($response->getStatusCode() !== 200 || !$login_result->success) {
 			return json_encode(array(
-    			'success' => false,
-    			'message' => $login_result->error->message
-    		));
+    				'success' => false,
+    				'message' => $login_result->error->message
+    			));
 		}
 
 		// login ok so get sessionid
@@ -81,14 +81,14 @@ class Vtiger
 
 		do {
 			// perform API GET request
-	        $response = $this->client->request('GET', $this->url, [
-	        	'query' => [
-	        		'operation' => 'getchallenge',
-	        		'username' => $this->username
-	        	]
-	        ]);
+	        	$response = $this->client->request('GET', $this->url, [
+	        		'query' => [
+	        			'operation' => 'getchallenge',
+	        			'username' => $this->username
+	        		]
+	        	]);
 
-	        // decode the response
+	        	// decode the response
 			$challenge = json_decode($response->getBody());
 
 			// If challenge failed
