@@ -231,4 +231,31 @@ class Vtiger
 
 		return (isset($data->success)) ? $data : false;
 	}
+	
+	public function describe($elementType)
+	{
+		$sessionid = self::sessionid();
+
+		if (isset($sessionid->success)) {
+		    return $sessionid->message;
+		}
+
+		for ($i = 0; (!isset($data->success) && $i < 10); $i++) {
+				// send a request to describe a module (which returns a list of available fields) for a Vtiger module
+		    $response = $this->client->request('GET', $this->url, [
+			'query' => [
+			    'operation' => 'describe',
+			    'sessionName' => $sessionid,
+			    'elementType' => $elementType
+			]
+		    ]);
+
+				// decode the response
+		    $data = json_decode($response->getBody()->getContents());
+		}
+
+		self::close($sessionid);
+
+		return (isset($data->success)) ? $data : false;
+	}
 }
