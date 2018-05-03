@@ -9,7 +9,7 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
 1. In order to install the Vtiger package in your Laravel project, just run the composer require command from your terminal:
 
     ```
-    composer require "clystnet/vtiger ~1.1"
+    composer require "clystnet/vtiger ~1.2"
     ```
 
     > *If you are using Laravel 5.5 you don’t need to do steps 2 and 3.*
