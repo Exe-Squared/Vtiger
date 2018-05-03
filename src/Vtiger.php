@@ -3,76 +3,113 @@ namespace Clystnet\Vtiger;
 
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Client;
+use Mockery\CountValidator\Exception;
 use Storage;
 use Config;
 
 class Vtiger
 {
 	protected $url;
-    	protected $username;
-    	protected $accesskey;
-    	protected $client;
+	protected $username;
+	protected $accesskey;
+	protected $client;
+	protected $retry;
+	protected $maxretry;
 
 	public function __construct() {
-        	// set the API url and username
-        	$this->url = Config::get('vtiger.url');
-        	$this->username = Config::get('vtiger.username');
-        	$this->accesskey = Config::get('vtiger.accesskey');
+		// set the API url and username
+		$this->url = Config::get('vtiger.url');
+		$this->username = Config::get('vtiger.username');
+		$this->accesskey = Config::get('vtiger.accesskey');
 
-        	$this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
+		$this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
+
+		$this->retry = true;
+		$this->maxretry = 10;
    	 }
 
 	protected function sessionid() 
 	{
-		// session file exists
-		if(Storage::disk('local')->exists('session.json')) {
-			$json = json_decode(Storage::disk('local')->get('session.json'));
+		$tries = 0;
+		$keep = true;
 
-			if($json->expireTime < time() || empty($json->token)) {
-				$updated = self::gettoken();
+		while($keep && $tries < $this->maxretry) {
 
-				$json = (object) $updated;
+			// session file exists
+			if(Storage::disk('local')->exists('session.json')) {
+				$json = json_decode(Storage::disk('local')->get('session.json'));
 
-				Storage::disk('local')->put('session.json', json_encode($json));
+				if(isset($obj) && property_exists($json, 'expireTime') && property_exists($json, 'token')) {
+
+					if($json->expireTime < time() || empty($json->token)) {
+						$json = $this->storesession();
+					}
+				}
+				else {
+					$json = $this->storesession();
+				}
 			}
+			else {
+				$json = $this->storesession();
+			}
+
+			$token = $json->token;
+
+			// Create unique key using combination of challengetoken and accesskey
+			$generatedkey = md5($token . $this->accesskey);
+
+			// login using username and accesskey
+			$response = $this->client->request('POST', $this->url, [
+			    'form_params' => [
+			       	'operation' => 'login', 
+					'username' => $this->username, 
+					'accessKey' => $generatedkey
+			    ]
+			]);
+
+			// decode the response
+	        $login_result = json_decode($response->getBody()->getContents());
+
+	        // If api login failed
+			if($response->getStatusCode() !== 200 || !$login_result->success) {
+
+				$keep = $this->retry;
+
+				if(!$login_result->success && $keep) {
+					if($login_result->error->code == "INVALID_USER_CREDENTIALS" || $login_result->error->code == "INVALID_SESSIONID") {
+						$tries++;
+
+						if (Storage::disk('local')->exists('session.json')) {
+							Storage::disk('local')->delete('session.json');
+						}
+						continue;
+					}
+				}
+
+				if ($response->me) {
+					return json_encode(array(
+		    			'success' => false,
+		    			'message' => $login_result->error->message
+		    		));
+				}
+			}
+
+			// login ok so get sessionid
+			$sessionid = $login_result->result->sessionName;
+
+			return $sessionid;
 		}
-		else {
-			$updated = self::gettoken();
+	}
 
-			$json = (object) $updated;
+	protected function storesession()
+	{
+		$updated = self::gettoken();
 
-			Storage::disk('local')->put('session.json', json_encode($json));	
-		}
+		$json = (object) $updated;
 
-		$token = $json->token;
+		Storage::disk('local')->put('session.json', json_encode($json));
 
-		// Create unique key using combination of challengetoken and accesskey
-		$generatedkey = md5($token . $this->accesskey);
-
-		// login using username and accesskey
-		$response = $this->client->request('POST', $this->url, [
-		    	'form_params' => [
-		       		'operation' => 'login', 
-				'username' => $this->username, 
-				'accessKey' => $generatedkey
-		    	]
-		]);
-
-		// decode the response
-        	$login_result = json_decode($response->getBody()->getContents());
-
-        	// If api login failed
-		if($response->getStatusCode() !== 200 || !$login_result->success) {
-			return json_encode(array(
-    				'success' => false,
-    				'message' => $login_result->error->message
-    			));
-		}
-
-		// login ok so get sessionid
-		$sessionid = $login_result->result->sessionName;
-
-		return $sessionid;
+		return $json;
 	}
 
 	protected function gettoken() 
@@ -81,12 +118,12 @@ class Vtiger
 
 		do {
 			// perform API GET request
-	        	$response = $this->client->request('GET', $this->url, [
-	        		'query' => [
-	        			'operation' => 'getchallenge',
-	        			'username' => $this->username
-	        		]
-	        	]);
+        	$response = $this->client->request('GET', $this->url, [
+        		'query' => [
+        			'operation' => 'getchallenge',
+        			'username' => $this->username
+        		]
+        	]);
 
 	        	// decode the response
 			$challenge = json_decode($response->getBody());
@@ -243,11 +280,11 @@ class Vtiger
 		for ($i = 0; (!isset($data->success) && $i < 10); $i++) {
 				// send a request to describe a module (which returns a list of available fields) for a Vtiger module
 		    $response = $this->client->request('GET', $this->url, [
-			'query' => [
-			    'operation' => 'describe',
-			    'sessionName' => $sessionid,
-			    'elementType' => $elementType
-			]
+				'query' => [
+				    'operation' => 'describe',
+				    'sessionName' => $sessionid,
+				    'elementType' => $elementType
+				]
 		    ]);
 
 				// decode the response
