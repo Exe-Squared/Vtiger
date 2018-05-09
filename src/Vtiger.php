@@ -26,7 +26,17 @@ class Vtiger
 
 		$this->retry = true;
 		$this->maxretry = 10;
-   	 }
+   	}
+
+   	// user can pass other connection parameters to override the contructor
+   	public function connection($url, $username, $accesskey)
+   	{
+   		$this->url = $url;
+   		$this->username = $username;
+   		$this->accesskey = $accesskey;
+
+   		return $this;
+   	}
 
 	protected function sessionid() 
 	{
@@ -125,7 +135,7 @@ class Vtiger
         		]
         	]);
 
-	        	// decode the response
+	        // decode the response
 			$challenge = json_decode($response->getBody());
 
 			// If challenge failed
@@ -146,7 +156,7 @@ class Vtiger
 
 	protected function close($sessionid)
 	{
-		// send a request using a database query to get back any user with the email from the form POST request 
+		// send a request to close current connection
 		$response = $this->client->request('GET', $this->url, [
 			'query' => [
 				'operation' => 'logout',
@@ -169,7 +179,7 @@ class Vtiger
 		}
 
 		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
-			// send a request using a database query to get back any user with the email from the form POST request 
+			// send a request using a database query to get back any matching records
 			$response = $this->client->request('GET', $this->url, [
 				'query' => [
 					'operation' => 'query',
@@ -196,7 +206,7 @@ class Vtiger
 		}
 
 		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
-			// send a request using a database query to get back any user with the email from the form POST request 
+			// send a request to retrieve a record
 			$response = $this->client->request('GET', $this->url, [
 				'query' => [
 					'operation' => 'retrieve',
@@ -223,7 +233,7 @@ class Vtiger
 		}
 
 		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
-			// send a request using a database query to get back any user with the email from the form POST request 
+			// send a request to create a record
 			$response = $this->client->request('POST', $this->url, [
 				'form_params' => [
 					'operation' => 'create',
@@ -251,7 +261,7 @@ class Vtiger
 		}
 
 		for($i = 0; (!isset($data->success) && $i < 10); $i++) {
-			// send a request using a database query to get back any user with the email from the form POST request 
+			// send a request to update a record
 			$response = $this->client->request('POST', $this->url, [
 				'form_params' => [
 	                'operation' => 'update', 
@@ -268,6 +278,33 @@ class Vtiger
 
 		return (isset($data->success)) ? $data : false;
 	}
+
+	public function delete($id)
+	{
+		$sessionid = self::sessionid();
+
+		if (isset($sessionid->success)) {
+		    return $sessionid->message;
+		}
+
+		for ($i = 0; (!isset($data->success) && $i < 10); $i++) {
+			// send a request to delete a record
+		    $response = $this->client->request('GET', $this->url, [
+				'query' => [
+				    'operation' => 'delete',
+				    'sessionName' => $sessionid,
+				    'id' => $id
+				]
+		    ]);
+
+			// decode the response
+		    $data = json_decode($response->getBody()->getContents());
+		}
+
+		self::close($sessionid);
+
+		return (isset($data->success)) ? $data : false;
+	}
 	
 	public function describe($elementType)
 	{
@@ -278,7 +315,7 @@ class Vtiger
 		}
 
 		for ($i = 0; (!isset($data->success) && $i < 10); $i++) {
-				// send a request to describe a module (which returns a list of available fields) for a Vtiger module
+			// send a request to describe a module (which returns a list of available fields) for a Vtiger module
 		    $response = $this->client->request('GET', $this->url, [
 				'query' => [
 				    'operation' => 'describe',

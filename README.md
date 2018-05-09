@@ -9,7 +9,7 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
 1. In order to install the Vtiger package in your Laravel project, just run the composer require command from your terminal:
 
     ```
-    composer require "clystnet/vtiger ~1.1"
+    composer require "clystnet/vtiger ~1.2"
     ```
 
     > *If you are using Laravel 5.5 you don’t need to do steps 2 and 3.*
@@ -46,6 +46,12 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
 
 > Because I've experienced problems getting the sessionid from the CRM when multiple users are accessing the CRM at the same time, the solution was to store the sessionid into a file within Laravel application.
 > Instead of getting the token from the database for each request using the webservice API, a check is made against the expiry time in the file. If the expiry time has expired, a token is requested from the CRM and file is updated with the new token and updated expiry time.
+
+### Overriding default configuration
+If you need to use a different connection to the default configuration, you can add the `connection()` method and pass parameters like so and chain the following operation
+```
+Vtiger::connection($url, $username, $accesskey)->query($query);
+```
 
 ### Usage
 
@@ -111,6 +117,24 @@ $obj = Vtiger::query($query);
 foreach($obj->result as $result) {
     // do something
 }
+```
+
+#### Delete
+
+To delete an record, you need the id of the record you want to delete (i.e. '4x12').
+```
+$id = '4x12';
+
+$obj = Vtiger::delete($id);
+```
+
+#### Describe
+
+To describe an element, you need the module name you want to describe (i.e. 'Contacts').
+```
+$element = 'Contacts';
+
+$obj = Vtiger::describe($element);
 ```
 
 ## Contributing
