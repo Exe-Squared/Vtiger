@@ -78,9 +78,9 @@ class Vtiger
 			]);
 
 			// decode the response
-	        $login_result = json_decode($response->getBody()->getContents());
+	        	$login_result = json_decode($response->getBody()->getContents());
 
-	        // If api login failed
+	        	// If api login failed
 			if($response->getStatusCode() !== 200 || !$login_result->success) {
 
 				$keep = $this->retry;
@@ -97,9 +97,9 @@ class Vtiger
 				}
 
 				return json_encode(array(
-	    			'success' => false,
-	    			'message' => $login_result->error->message
-	    		));
+	    				'success' => false,
+	    				'message' => $login_result->error->message
+	    			));
 			}
 
 			// login ok so get sessionid
