@@ -96,12 +96,10 @@ class Vtiger
 					}
 				}
 
-				if ($response->me) {
-					return json_encode(array(
-		    			'success' => false,
-		    			'message' => $login_result->error->message
-		    		));
-				}
+				return json_encode(array(
+	    			'success' => false,
+	    			'message' => $login_result->error->message
+	    		));
 			}
 
 			// login ok so get sessionid
