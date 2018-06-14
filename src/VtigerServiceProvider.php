@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 
 class VtigerServiceProvider extends ServiceProvider
 {
+
     /**
      * Bootstrap the application services.
      *
@@ -13,6 +14,7 @@ class VtigerServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+
         $this->publishes([
             __DIR__ . '/Config/config.php' => config_path('vtiger.php'),
         ], 'vtiger');
@@ -21,6 +23,7 @@ class VtigerServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__ . '/Config/config.php', 'vtiger'
         );
+
     }
 
     /**
@@ -30,6 +33,7 @@ class VtigerServiceProvider extends ServiceProvider
      */
     public function register()
     {
+
         $this->app->bind('clystnet-vtiger', function () {
             return new Vtiger();
         });
@@ -37,5 +41,7 @@ class VtigerServiceProvider extends ServiceProvider
         config([
             'config/vtiger.php',
         ]);
+
     }
+
 }
