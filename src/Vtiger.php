@@ -130,6 +130,7 @@ class Vtiger
         $tryCounter = 1;
         do {
             // login using username and accesskey
+            /** @var ResponseInterface $response */
             $response = $this->client->request('POST', $this->url, [
                 'form_params' => [
                     'operation' => 'login',
@@ -138,6 +139,8 @@ class Vtiger
                 ]
             ]);
 
+            /** @var ResponseInterface $unprocessedResponse */
+            $unprocessedResponse = $response;
             // decode the response
             $loginResult = json_decode($response->getBody()->getContents());
             $tryCounter++;
@@ -148,7 +151,7 @@ class Vtiger
         }
 
         // If api login failed
-        if ($response->getStatusCode() !== 200 || !$loginResult->success) {
+        if ($unprocessedResponse->getStatusCode() !== 200 || !$loginResult->success) {
             if (!$loginResult->success) {
                 if ($loginResult->error->code == "INVALID_USER_CREDENTIALS" || $loginResult->error->code == "INVALID_SESSIONID") {
                     if ($this->sessionDriver == 'file') {
@@ -159,10 +162,10 @@ class Vtiger
                         Redis::del('clystnet_vtiger');
                     }
                 } else {
-                    $this->_processResult($response);
+                    $this->_processResult($unprocessedResponse);
                 }
             } else {
-                $this->_checkResponseStatusCode($response);
+                $this->_checkResponseStatusCode($unprocessedResponse);
             }
         } else {
             // login ok so get sessionid and update our session
@@ -233,7 +236,10 @@ class Vtiger
                     'username' => $this->username
                 ]
             ]);
+
+            $unprocessedResponse = $response;
             $processedResponse = json_decode($response->getBody()->getContents());
+            $tryCounter++;
         } while (!isset($processedResponse->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
@@ -241,7 +247,7 @@ class Vtiger
         }
 
         // decode the response
-        $challenge = $this->_processResult($response);
+        $challenge = $this->_processResult($unprocessedResponse);
 
         // Everything ok so create a token from response
         $output = array(
@@ -516,7 +522,7 @@ class Vtiger
     {
 
         if ($response->getStatusCode() !== 200) {
-            throw new VtigerError("API request did not complete correctley - Response code: ".$response->getStatusCode(), 1);
+            throw new VtigerError("API request did not complete correctly - Response code: ".$response->getStatusCode(), 1);
         }
 
     }
