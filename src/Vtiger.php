@@ -139,10 +139,8 @@ class Vtiger
                 ]
             ]);
 
-            /** @var ResponseInterface $unprocessedResponse */
-            $unprocessedResponse = $response;
             // decode the response
-            $loginResult = json_decode($response->getBody()->getContents());
+            $loginResult = json_decode($response->getBody());
             $tryCounter++;
         } while (!isset($loginResult->success) && $tryCounter <= $this->maxRetries);
 
@@ -151,7 +149,7 @@ class Vtiger
         }
 
         // If api login failed
-        if ($unprocessedResponse->getStatusCode() !== 200 || !$loginResult->success) {
+        if ($response->getStatusCode() !== 200 || !$loginResult->success) {
             if (!$loginResult->success) {
                 if ($loginResult->error->code == "INVALID_USER_CREDENTIALS" || $loginResult->error->code == "INVALID_SESSIONID") {
                     if ($this->sessionDriver == 'file') {
@@ -162,10 +160,10 @@ class Vtiger
                         Redis::del('clystnet_vtiger');
                     }
                 } else {
-                    $this->_processResult($unprocessedResponse);
+                    $this->_processResult($response);
                 }
             } else {
-                $this->_checkResponseStatusCode($unprocessedResponse);
+                $this->_checkResponseStatusCode($response);
             }
         } else {
             // login ok so get sessionid and update our session
@@ -237,17 +235,15 @@ class Vtiger
                 ]
             ]);
 
-            $unprocessedResponse = $response;
-            $processedResponse = json_decode($response->getBody()->getContents());
             $tryCounter++;
-        } while (!isset($processedResponse->success) && $tryCounter <= $this->maxRetries);
+        } while (!isset(json_decode($response->getBody())->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
             throw new VtigerError("Could not complete get token request within ".$this->maxRetries." tries", 6);
         }
 
         // decode the response
-        $challenge = $this->_processResult($unprocessedResponse);
+        $challenge = $this->_processResult($response);
 
         // Everything ok so create a token from response
         $output = array(
@@ -497,7 +493,7 @@ class Vtiger
         $this->_checkResponseStatusCode($response);
 
         // decode the response
-        $data = json_decode($response->getBody()->getContents());
+        $data = json_decode($response->getBody());
 
         if (!isset($data->success)) {
             throw new VtigerError("Success property not set on VTiger response", 2);
