@@ -56,6 +56,7 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
     |accesskey        |irGsy9HB0YOZdEA                      |
     |sessiondriver    |file                                 |
     |persistconnection|true                                 |
+    |max_retries      |10                                   |
 
 > Because I've experienced problems getting the sessionid from the CRM when multiple users are accessing the CRM at the same time, the solution was to store the sessionid into a file within Laravel application.
 > Instead of getting the token from the database for each request using the webservice API, a check is made against the expiry time in the file. If the expiry time has expired, a token is requested from the CRM and file is updated with the new token and updated expiry time.
