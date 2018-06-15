@@ -24,6 +24,9 @@ class Vtiger
     /** @var Client */
     protected $client;
 
+    /** @var int */
+    protected $maxRetries;
+
     /**
      * Vtiger constructor.
      */
@@ -35,6 +38,7 @@ class Vtiger
         $this->accesskey = Config::get('vtiger.accesskey');
         $this->sessionDriver = Config::get('vtiger.sessiondriver');
         $this->persistConnection = Config::get('vtiger.persistconnection');
+        $this->maxRetries = Config::get('vtiger.max_retries');
 
         $this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
     }
@@ -65,7 +69,7 @@ class Vtiger
      * @throws VtigerError
      * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    protected function sessionid()
+    protected function sessionId()
     {
 
         // Check the session file exists
@@ -85,22 +89,22 @@ class Vtiger
         if (isset($sessionData)) {
             if (isset($sessionData) && property_exists($sessionData, 'expireTime') && property_exists($sessionData, 'token')) {
                 if ($sessionData->expireTime < time() || empty($sessionData->token)) {
-                    $sessionData = $this->storesession();
+                    $sessionData = $this->storeSession();
                 }
             } else {
-                $sessionData = $this->storesession();
+                $sessionData = $this->storeSession();
             }
         } else {
-            $sessionData = $this->storesession();
+            $sessionData = $this->storeSession();
         }
 
         if (isset($json->sessionid)) {
-            $sessionid = $json->sessionid;
+            $sessionId = $sessionData->sessionid;
         } else {
-            $sessionid = $this->login($sessionData);
+            $sessionId = $this->login($sessionData);
         }
 
-        return $sessionid;
+        return $sessionId;
 
     }
 
@@ -117,22 +121,31 @@ class Vtiger
     protected function login($sessionData)
     {
 
+        $sessionId = null;
         $token = $sessionData->token;
 
         // Create unique key using combination of challengetoken and accesskey
-        $generatedkey = md5($token . $this->accesskey);
+        $generatedKey = md5($token . $this->accesskey);
 
-        // login using username and accesskey
-        $response = $this->client->request('POST', $this->url, [
-            'form_params' => [
-                'operation' => 'login',
-                'username' => $this->username,
-                'accessKey' => $generatedkey
-            ]
-        ]);
+        $tryCounter = 1;
+        do {
+            // login using username and accesskey
+            $response = $this->client->request('POST', $this->url, [
+                'form_params' => [
+                    'operation' => 'login',
+                    'username' => $this->username,
+                    'accessKey' => $generatedKey
+                ]
+            ]);
 
-        // decode the response
-        $loginResult = json_decode($response->getBody()->getContents());
+            // decode the response
+            $loginResult = json_decode($response->getBody()->getContents());
+            $tryCounter++;
+        } while (!isset($loginResult->success) && $tryCounter <= $this->maxRetries);
+
+        if ($tryCounter >= $this->maxRetries) {
+            throw new VtigerError("Could not complete login request within ".$this->maxRetries." tries", 5);
+        }
 
         // If api login failed
         if ($response->getStatusCode() !== 200 || !$loginResult->success) {
@@ -153,20 +166,20 @@ class Vtiger
             }
         } else {
             // login ok so get sessionid and update our session
-            $sessionid = $loginResult->result->sessionName;
+            $sessionId = $loginResult->result->sessionName;
 
             switch ($this->sessionDriver) {
                 case "file":
                     if (Storage::disk('local')->exists('session.json')) {
                         $json = json_decode(Storage::disk('local')->get('session.json'));
-                        $json->sessionid = $sessionid;
+                        $json->sessionid = $sessionId;
                         Storage::disk('local')->put('session.json', json_encode($json));
                     }
                     break;
                 case "redis":
                     Redis::incr('loggedin');
                     $json = json_decode(Redis::get('clystnet_vtiger'));
-                    $json->sessionid = $sessionid;
+                    $json->sessionid = $sessionId;
                     Redis::set('clystnet_vtiger', json_encode($json));
                     break;
                 default:
@@ -174,7 +187,7 @@ class Vtiger
             }
         }
 
-        return $sessionid;
+        return $sessionId;
 
     }
 
@@ -183,11 +196,12 @@ class Vtiger
      *
      * @return object
      * @throws GuzzleException
+     * @throws VtigerError
      */
-    protected function storesession()
+    protected function storeSession()
     {
 
-        $updated = $this->gettoken();
+        $updated = $this->getToken();
 
         $output = (object)$updated;
         if ($this->sessionDriver == 'file') {
@@ -207,16 +221,24 @@ class Vtiger
      * @throws GuzzleException
      * @throws VtigerError
      */
-    protected function gettoken()
+    protected function getToken()
     {
 
         // perform API GET request
-        $response = $this->client->request('GET', $this->url, [
-            'query' => [
-                'operation' => 'getchallenge',
-                'username' => $this->username
-            ]
-        ]);
+        $tryCounter = 1;
+        do {
+            $response = $this->client->request('GET', $this->url, [
+                'query' => [
+                    'operation' => 'getchallenge',
+                    'username' => $this->username
+                ]
+            ]);
+            $processedResponse = json_decode($response->getBody()->getContents());
+        } while (!isset($processedResponse->success) && $tryCounter <= $this->maxRetries);
+
+        if ($tryCounter >= $this->maxRetries) {
+            throw new VtigerError("Could not complete get token request within ".$this->maxRetries." tries", 6);
+        }
 
         // decode the response
         $challenge = $this->_processResult($response);
@@ -234,13 +256,13 @@ class Vtiger
     /**
      * Logout from the VTiger API
      *
-     * @param string $sessionid
+     * @param string $sessionId
      *
      * @return object
      * @throws GuzzleException
      * @throws VtigerError
      */
-    protected function close($sessionid)
+    protected function close($sessionId)
     {
 
         if ($this->persistConnection) {
@@ -251,7 +273,7 @@ class Vtiger
         $response = $this->client->request('GET', $this->url, [
             'query' => [
                 'operation' => 'logout',
-                'sessionName' => $sessionid
+                'sessionName' => $sessionId
             ]
         ]);
 
@@ -272,18 +294,18 @@ class Vtiger
     public function query($query)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request using a database query to get back any matching records
         $response = $this->client->request('GET', $this->url, [
             'query' => [
                 'operation' => 'query',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'query' => $query
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 
@@ -303,18 +325,18 @@ class Vtiger
     public function retrieve($id)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request to retrieve a record
         $response = $this->client->request('GET', $this->url, [
             'query' => [
                 'operation' => 'retrieve',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'id' => $id
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 
@@ -341,22 +363,22 @@ class Vtiger
      * @throws VtigerError
      * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
-    public function create(string $elem, string $data)
+    public function create($elem, $data)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request to create a record
         $response = $this->client->request('POST', $this->url, [
             'form_params' => [
                 'operation' => 'create',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'element' => $data,
                 'elementType' => $elem
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 
@@ -377,18 +399,18 @@ class Vtiger
     public function update($object)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request to update a record
         $response = $this->client->request('POST', $this->url, [
             'form_params' => [
                 'operation' => 'update',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'element' => json_encode($object),
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 
@@ -408,18 +430,18 @@ class Vtiger
     public function delete($id)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request to delete a record
         $response = $this->client->request('GET', $this->url, [
             'query' => [
                 'operation' => 'delete',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'id' => $id
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 
@@ -438,18 +460,18 @@ class Vtiger
     public function describe($elementType)
     {
 
-        $sessionid = self::sessionid();
+        $sessionId = $this->sessionId();
 
         // send a request to describe a module (which returns a list of available fields) for a Vtiger module
         $response = $this->client->request('GET', $this->url, [
             'query' => [
                 'operation' => 'describe',
-                'sessionName' => $sessionid,
+                'sessionName' => $sessionId,
                 'elementType' => $elementType
             ]
         ]);
 
-        self::close($sessionid);
+        $this->close($sessionId);
 
         return $this->_processResult($response);
 

@@ -7,4 +7,5 @@ return [
     'accesskey' => '',
     'sessiondriver' => 'file', //reddis or file
     'persistconnection' => true,
+    'max_retries' => 10
 ];
