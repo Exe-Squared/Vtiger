@@ -67,19 +67,18 @@ class Vtiger
      */
     protected function sessionid()
     {
-
         // Check the session file exists
         switch ($this->sessionDriver) {
-            case "file":
+            case 'file':
                 if (Storage::disk('local')->exists('session.json')) {
                     $sessionData = json_decode(Storage::disk('local')->get('session.json'));
                 }
                 break;
-            case "redis":
+            case 'redis':
                 $sessionData = json_decode(Redis::get('clystnet_vtiger'));
                 break;
             default:
-                throw new VtigerError("Session driver type of ".$this->sessionDriver." is not supported", 4);
+                throw new VtigerError('Session driver type of ' . $this->sessionDriver . ' is not supported', 4);
         }
 
         if (isset($sessionData)) {
@@ -87,21 +86,23 @@ class Vtiger
                 if ($sessionData->expireTime < time() || empty($sessionData->token)) {
                     $sessionData = $this->storesession();
                 }
-            } else {
+            }
+            else {
                 $sessionData = $this->storesession();
             }
-        } else {
+        }
+        else {
             $sessionData = $this->storesession();
         }
 
         if (isset($json->sessionid)) {
             $sessionid = $json->sessionid;
-        } else {
+        }
+        else {
             $sessionid = $this->login($sessionData);
         }
 
         return $sessionid;
-
     }
 
     /**
@@ -116,7 +117,6 @@ class Vtiger
      */
     protected function login($sessionData)
     {
-
         $token = $sessionData->token;
 
         // Create unique key using combination of challengetoken and accesskey
@@ -137,45 +137,48 @@ class Vtiger
         // If api login failed
         if ($response->getStatusCode() !== 200 || !$loginResult->success) {
             if (!$loginResult->success) {
-                if ($loginResult->error->code == "INVALID_USER_CREDENTIALS" || $loginResult->error->code == "INVALID_SESSIONID") {
+                if ($loginResult->error->code == 'INVALID_USER_CREDENTIALS' || $loginResult->error->code == 'INVALID_SESSIONID') {
                     if ($this->sessionDriver == 'file') {
                         if (Storage::disk('local')->exists('session.json')) {
                             Storage::disk('local')->delete('session.json');
                         }
-                    } elseif ($this->sessionDriver == 'redis') {
+                    }
+                    elseif ($this->sessionDriver == 'redis') {
                         Redis::del('clystnet_vtiger');
                     }
-                } else {
+                }
+                else {
                     $this->_processResult($response);
                 }
-            } else {
+            }
+            else {
                 $this->_checkResponseStatusCode($response);
             }
-        } else {
+        }
+        else {
             // login ok so get sessionid and update our session
             $sessionid = $loginResult->result->sessionName;
 
             switch ($this->sessionDriver) {
-                case "file":
+                case 'file':
                     if (Storage::disk('local')->exists('session.json')) {
                         $json = json_decode(Storage::disk('local')->get('session.json'));
                         $json->sessionid = $sessionid;
                         Storage::disk('local')->put('session.json', json_encode($json));
                     }
                     break;
-                case "redis":
+                case 'redis':
                     Redis::incr('loggedin');
                     $json = json_decode(Redis::get('clystnet_vtiger'));
                     $json->sessionid = $sessionid;
                     Redis::set('clystnet_vtiger', json_encode($json));
                     break;
                 default:
-                    throw new VtigerError("Session driver type of ".$this->sessionDriver." is not supported", 4);
+                    throw new VtigerError('Session driver type of ' . $this->sessionDriver . ' is not supported', 4);
             }
         }
 
         return $sessionid;
-
     }
 
     /**
@@ -186,18 +189,17 @@ class Vtiger
      */
     protected function storesession()
     {
-
         $updated = $this->gettoken();
-
         $output = (object)$updated;
+
         if ($this->sessionDriver == 'file') {
             Storage::disk('local')->put('session.json', json_encode($output));
-        } elseif ($this->sessionDriver == 'redis') {
+        }
+        elseif ($this->sessionDriver == 'redis') {
             Redis::set('clystnet_vtiger', json_encode($output));
         }
 
         return $output;
-
     }
 
     /**
@@ -209,7 +211,6 @@ class Vtiger
      */
     protected function gettoken()
     {
-
         // perform API GET request
         $response = $this->client->request('GET', $this->url, [
             'query' => [
@@ -228,7 +229,6 @@ class Vtiger
         );
 
         return $output;
-
     }
 
     /**
@@ -242,7 +242,6 @@ class Vtiger
      */
     protected function close($sessionid)
     {
-
         if ($this->persistConnection) {
             return true;
         }
@@ -256,7 +255,6 @@ class Vtiger
         ]);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -271,7 +269,6 @@ class Vtiger
      */
     public function query($query)
     {
-
         $sessionid = self::sessionid();
 
         // send a request using a database query to get back any matching records
@@ -286,7 +283,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -302,7 +298,6 @@ class Vtiger
      */
     public function retrieve($id)
     {
-
         $sessionid = self::sessionid();
 
         // send a request to retrieve a record
@@ -317,7 +312,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -343,7 +337,6 @@ class Vtiger
      */
     public function create(string $elem, string $data)
     {
-
         $sessionid = self::sessionid();
 
         // send a request to create a record
@@ -359,7 +352,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -376,7 +368,6 @@ class Vtiger
      */
     public function update($object)
     {
-
         $sessionid = self::sessionid();
 
         // send a request to update a record
@@ -391,7 +382,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -407,7 +397,6 @@ class Vtiger
      */
     public function delete($id)
     {
-
         $sessionid = self::sessionid();
 
         // send a request to delete a record
@@ -422,7 +411,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -437,7 +425,6 @@ class Vtiger
      */
     public function describe($elementType)
     {
-
         $sessionid = self::sessionid();
 
         // send a request to describe a module (which returns a list of available fields) for a Vtiger module
@@ -452,7 +439,6 @@ class Vtiger
         self::close($sessionid);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -465,14 +451,13 @@ class Vtiger
      */
     protected function _processResult($response)
     {
-
         $this->_checkResponseStatusCode($response);
 
         // decode the response
         $data = json_decode($response->getBody()->getContents());
 
         if (!isset($data->success)) {
-            throw new VtigerError("Success property not set on VTiger response", 2);
+            throw new VtigerError('Success property not set on VTiger response', 2);
         }
 
         if ($data->success == false) {
@@ -480,7 +465,6 @@ class Vtiger
         }
 
         return $data;
-
     }
 
     /**
@@ -492,11 +476,9 @@ class Vtiger
      */
     protected function _checkResponseStatusCode($response)
     {
-
         if ($response->getStatusCode() !== 200) {
-            throw new VtigerError("API request did not complete correctley - Response code: ".$response->getStatusCode(), 1);
+            throw new VtigerError('API request did not complete correctley - Response code: ' . $response->getStatusCode(), 1);
         }
-
     }
 
     /**
@@ -508,13 +490,10 @@ class Vtiger
      */
     protected function _processResponseError($processedData)
     {
-
         if (!isset($processedData->error)) {
-            throw new VtigerError("Error property not set on VTiger response when success is false", 3);
+            throw new VtigerError('Error property not set on VTiger response when success is false', 3);
         }
 
         throw new VtigerError($processedData->error->message, 4, $processedData->error->code);
-
     }
-
 }
