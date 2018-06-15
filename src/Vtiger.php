@@ -98,7 +98,7 @@ class Vtiger
             $sessionData = $this->storeSession();
         }
 
-        if (isset($json->sessionid)) {
+        if (isset($sessionData->sessionid)) {
             $sessionId = $sessionData->sessionid;
         } else {
             $sessionId = $this->login($sessionData);
@@ -140,7 +140,7 @@ class Vtiger
             ]);
 
             // decode the response
-            $loginResult = json_decode($response->getBody());
+            $loginResult = $this->_processResponse($response);
             $tryCounter++;
         } while (!isset($loginResult->success) && $tryCounter <= $this->maxRetries);
 
@@ -236,7 +236,7 @@ class Vtiger
             ]);
 
             $tryCounter++;
-        } while (!isset(json_decode($response->getBody())->success) && $tryCounter <= $this->maxRetries);
+        } while (!isset($this->_processResponse($response)->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
             throw new VtigerError("Could not complete get token request within ".$this->maxRetries." tries", 6);
@@ -272,7 +272,7 @@ class Vtiger
         }
 
         // send a request to close current connection
-        $response = $this->client->request('GET', $this->url, [
+        $response = $this->client->request('POST', $this->url, [
             'query' => [
                 'operation' => 'logout',
                 'sessionName' => $sessionId
@@ -492,8 +492,7 @@ class Vtiger
 
         $this->_checkResponseStatusCode($response);
 
-        // decode the response
-        $data = json_decode($response->getBody());
+        $data = $this->_processResponse($response);
 
         if (!isset($data->success)) {
             throw new VtigerError("Success property not set on VTiger response", 2);
@@ -501,6 +500,28 @@ class Vtiger
 
         if ($data->success == false) {
             $this->_processResponseError($data);
+        }
+
+        return $data;
+
+    }
+
+    /**
+     * Get the json decoded response from either the body or the contents
+     *
+     * @param ResponseInterface $response
+     *
+     * @return object
+     */
+    protected function _processResponse($response)
+    {
+
+        // decode the response
+        if (!empty($response->getBody()->getContents())) {
+            $response->getBody()->rewind();
+            $data = json_decode($response->getBody()->getContents());
+        } else {
+            $data = json_decode($response->getBody());
         }
 
         return $data;
