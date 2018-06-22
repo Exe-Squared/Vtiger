@@ -2,32 +2,22 @@
 
 namespace Clystnet\Vtiger;
 
-class VtigerError extends \Exception {
-
-    /** @var string */
-    protected $vTigerErrorCode;
+class VtigerError extends \Exception
+{
 
     /**
-     * VtigerError constructor.
+     * Build a new VtigerError using the specified error from the errors array
      *
-     * @param string         $message
-     * @param int            $code
-     * @param string         $vTigerErrorCode
-     * @param Throwable|null $previous
+     * @param VtigerErrorElement[] $errorsArray
+     * @param int $codeToUse
+     * @param string|null $extraMessage
+     *
+     * @return VtigerError
      */
-    public function __construct($message = "", $code = 0, $vTigerErrorCode = "", Throwable $previous = null) {
-
-        parent::__construct($message, $code, $previous);
-
-        $this->vTigerErrorCode = $vTigerErrorCode;
-
-    }
-
-    /**
-     * @return string
-     */
-    public function getVTigerErrorCode() {
-        return $this->vTigerErrorCode;
+    public static function init($errorsArray, $codeToUse, $extraMessage = null)
+    {
+        return new self($errorsArray[$codeToUse]->getMessage() . $extraMessage,
+            $errorsArray[$codeToUse]->getErrorCode());
     }
 
 }

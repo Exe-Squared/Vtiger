@@ -1,10 +1,13 @@
 <?php
+
 namespace Clystnet\Vtiger;
 
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Client;
+use InvalidArgumentException;
 use Mockery\CountValidator\Exception;
 use Psr\Http\Message\ResponseInterface;
+use \Illuminate\Contracts\Filesystem\FileNotFoundException;
 use Storage;
 use Config;
 use Redis;
@@ -18,29 +21,66 @@ use Redis;
 class Vtiger
 {
 
+    /** @var VtigerErrorElement[] */
+    private $vTigerErrors;
+
     /** @var string */
-    protected $url, $username, $accesskey, $sessionDriver, $persistConnection;
+    protected $url;
+
+    /** @var string */
+    protected $username;
+
+    /** @var string */
+    protected $accessKey;
+
+    /** @var string */
+    protected $sessionDriver;
+
+    /** @var string */
+    protected $persistConnection;
 
     /** @var Client */
-    protected $client;
+    protected $guzzleClient;
 
     /** @var int */
     protected $maxRetries;
 
     /**
      * Vtiger constructor.
+     *
+     * @throws VtigerError
      */
     public function __construct()
     {
         // set the API url and username
         $this->url = Config::get('vtiger.url');
         $this->username = Config::get('vtiger.username');
-        $this->accesskey = Config::get('vtiger.accesskey');
+        $this->accessKey = Config::get('vtiger.accesskey');
         $this->sessionDriver = Config::get('vtiger.sessiondriver');
         $this->persistConnection = Config::get('vtiger.persistconnection');
         $this->maxRetries = Config::get('vtiger.max_retries');
 
-        $this->client = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
+        $this->vTigerErrors = [
+            0 => new VtigerErrorElement('Error received back from the API - ', 0),
+            1 => new VtigerErrorElement('API request did not complete correctly - Response code: ', 1),
+            2 => new VtigerErrorElement('Success property not set on VTiger response', 2),
+            3 => new VtigerErrorElement('Error property not set on VTiger response when success is false', 3),
+            4 => new VtigerErrorElement('Session driver type of ' . $this->sessionDriver . ' is not supported', 4),
+            5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
+            6 => new VtigerErrorElement(
+                'Could not complete get token request within ' . $this->maxRetries . ' tries',
+                6
+            ),
+            7 => new VtigerErrorElement('Guzzle ran into problems - ', 7),
+            8 => new VtigerErrorElement('Redis problem - ', 8),
+        ];
+
+        try {
+            $this->guzzleClient = new Client(['http_errors' => false, 'verify' => false]); //GuzzleHttp\Client
+        } catch (InvalidArgumentException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
+
     }
 
     /**
@@ -48,15 +88,15 @@ class Vtiger
      *
      * @param string $url
      * @param string $username
-     * @param string $accesskey
+     * @param string $accessKey
      *
      * @return $this
      */
-    public function connection($url, $username, $accesskey)
+    public function connection($url, $username, $accessKey)
     {
         $this->url = $url;
         $this->username = $username;
-        $this->accesskey = $accesskey;
+        $this->accessKey = $accessKey;
 
         return $this;
     }
@@ -65,29 +105,38 @@ class Vtiger
      * Get the session id for a login either from a stored session id or fresh from the API
      *
      * @return string
-     * @throws GuzzleException
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     protected function sessionId()
     {
-
         // Check the session file exists
         switch ($this->sessionDriver) {
             case "file":
                 if (Storage::disk('local')->exists('session.json')) {
-                    $sessionData = json_decode(Storage::disk('local')->get('session.json'));
+                    try {
+                        $sessionData = json_decode(Storage::disk('local')->get('session.json'));
+                    } catch (FileNotFoundException $e) {
+                        throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+                    }
                 }
                 break;
             case "redis":
                 $sessionData = json_decode(Redis::get('clystnet_vtiger'));
+
+                if (!$sessionData) {
+                    throw VtigerError::init($this->vTigerErrors, 8, 'Could not get the session data from index clystnet_vtiger');
+                }
                 break;
             default:
-                throw new VtigerError("Session driver type of ".$this->sessionDriver." is not supported", 4);
+                throw new VtigerError("Session driver type of " . $this->sessionDriver . " is not supported", 4);
         }
 
         if (isset($sessionData)) {
-            if (isset($sessionData) && property_exists($sessionData, 'expireTime') && property_exists($sessionData, 'token')) {
+            if (
+                isset($sessionData) &&
+                property_exists($sessionData, 'expireTime') &&
+                property_exists($sessionData, 'token')
+            ) {
                 if ($sessionData->expireTime < time() || empty($sessionData->token)) {
                     $sessionData = $this->storeSession();
                 }
@@ -105,39 +154,40 @@ class Vtiger
         }
 
         return $sessionId;
-
     }
 
     /**
      * Login to the VTiger API to get a new session
      *
-     * @param object $sessionData
+     * @param \stdClass $sessionData
      *
      * @return string
-     * @throws GuzzleException
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     protected function login($sessionData)
     {
-
         $sessionId = null;
         $token = $sessionData->token;
 
         // Create unique key using combination of challengetoken and accesskey
-        $generatedKey = md5($token . $this->accesskey);
+        $generatedKey = md5($token . $this->accessKey);
 
         $tryCounter = 1;
+
         do {
-            // login using username and accesskey
-            /** @var ResponseInterface $response */
-            $response = $this->client->request('POST', $this->url, [
-                'form_params' => [
-                    'operation' => 'login',
-                    'username' => $this->username,
-                    'accessKey' => $generatedKey
-                ]
-            ]);
+            try {
+                // login using username and accesskey
+                /** @var ResponseInterface $response */
+                $response = $this->guzzleClient->request('POST', $this->url, [
+                    'form_params' => [
+                        'operation' => 'login',
+                        'username' => $this->username,
+                        'accessKey' => $generatedKey
+                    ]
+                ]);
+            } catch (GuzzleException $e) {
+                throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+            }
 
             // decode the response
             $loginResult = $this->_processResponse($response);
@@ -145,7 +195,7 @@ class Vtiger
         } while (!isset($loginResult->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
-            throw new VtigerError("Could not complete login request within ".$this->maxRetries." tries", 5);
+            throw new VtigerError("Could not complete login request within " . $this->maxRetries . " tries", 5);
         }
 
         // If api login failed
@@ -154,10 +204,16 @@ class Vtiger
                 if ($loginResult->error->code == "INVALID_USER_CREDENTIALS" || $loginResult->error->code == "INVALID_SESSIONID") {
                     if ($this->sessionDriver == 'file') {
                         if (Storage::disk('local')->exists('session.json')) {
-                            Storage::disk('local')->delete('session.json');
+                            try {
+                                Storage::disk('local')->delete('session.json');
+                            } catch (FileNotFoundException $e) {
+                                throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+                            }
                         }
                     } elseif ($this->sessionDriver == 'redis') {
-                        Redis::del('clystnet_vtiger');
+                        if (Redis::del('clystnet_vtiger') < 1) {
+                            throw VtigerError::init($this->vTigerErrors, 8, 'Nothing to delete for index clystnet_vtiger');
+                        }
                     }
                 } else {
                     $this->_processResult($response);
@@ -172,9 +228,13 @@ class Vtiger
             switch ($this->sessionDriver) {
                 case "file":
                     if (Storage::disk('local')->exists('session.json')) {
-                        $json = json_decode(Storage::disk('local')->get('session.json'));
-                        $json->sessionid = $sessionId;
-                        Storage::disk('local')->put('session.json', json_encode($json));
+                        try {
+                            $json = json_decode(Storage::disk('local')->get('session.json'));
+                            $json->sessionid = $sessionId;
+                            Storage::disk('local')->put('session.json', json_encode($json));
+                        } catch (FileNotFoundException $e) {
+                            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+                        }
                     }
                     break;
                 case "redis":
@@ -184,62 +244,68 @@ class Vtiger
                     Redis::set('clystnet_vtiger', json_encode($json));
                     break;
                 default:
-                    throw new VtigerError("Session driver type of ".$this->sessionDriver." is not supported", 4);
+                    throw new VtigerError("Session driver type of " . $this->sessionDriver . " is not supported", 4);
             }
         }
 
         return $sessionId;
-
     }
 
     /**
      * Store a new session if needed
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
      */
     protected function storeSession()
     {
-
         $updated = $this->getToken();
 
         $output = (object)$updated;
         if ($this->sessionDriver == 'file') {
-            Storage::disk('local')->put('session.json', json_encode($output));
+            try {
+                Storage::disk('local')->put('session.json', json_encode($output));
+            } catch (FileNotFoundException $e) {
+                throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+            }
         } elseif ($this->sessionDriver == 'redis') {
-            Redis::set('clystnet_vtiger', json_encode($output));
+            $setResult = Redis::set('clystnet_vtiger', json_encode($output));
+
+            if (!$setResult) {
+                throw VtigerError::init($this->vTigerErrors, 8, 'Could not set the session data in index clystnet_vtiger');
+            }
         }
 
         return $output;
-
     }
 
     /**
      * Get a new access token from the VTiger API
      *
      * @return array
-     * @throws GuzzleException
      * @throws VtigerError
      */
     protected function getToken()
     {
-
         // perform API GET request
         $tryCounter = 1;
         do {
-            $response = $this->client->request('GET', $this->url, [
-                'query' => [
-                    'operation' => 'getchallenge',
-                    'username' => $this->username
-                ]
-            ]);
+            try {
+                $response = $this->guzzleClient->request('GET', $this->url, [
+                    'query' => [
+                        'operation' => 'getchallenge',
+                        'username' => $this->username
+                    ]
+                ]);
+            } catch (GuzzleException $e) {
+                throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+            }
 
             $tryCounter++;
         } while (!isset($this->_processResponse($response)->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
-            throw new VtigerError("Could not complete get token request within ".$this->maxRetries." tries", 6);
+            throw new VtigerError("Could not complete get token request within " . $this->maxRetries . " tries", 6);
         }
 
         // decode the response
@@ -252,7 +318,6 @@ class Vtiger
         );
 
         return $output;
-
     }
 
     /**
@@ -260,27 +325,29 @@ class Vtiger
      *
      * @param string $sessionId
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass|bool
      * @throws VtigerError
      */
     protected function close($sessionId)
     {
-
         if ($this->persistConnection) {
             return true;
         }
 
-        // send a request to close current connection
-        $response = $this->client->request('POST', $this->url, [
-            'query' => [
-                'operation' => 'logout',
-                'sessionName' => $sessionId
-            ]
-        ]);
+        try {
+            // send a request to close current connection
+            $response = $this->guzzleClient->request(
+                'POST', $this->url, [
+                'query' => [
+                    'operation' => 'logout',
+                    'sessionName' => $sessionId
+                ]
+            ]);
+        } catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -288,29 +355,29 @@ class Vtiger
      *
      * @param string $query
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function query($query)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request using a database query to get back any matching records
-        $response = $this->client->request('GET', $this->url, [
-            'query' => [
-                'operation' => 'query',
-                'sessionName' => $sessionId,
-                'query' => $query
-            ]
-        ]);
+        try {
+            // send a request using a database query to get back any matching records
+            $response = $this->guzzleClient->request('GET', $this->url, [
+                'query' => [
+                    'operation' => 'query',
+                    'sessionName' => $sessionId,
+                    'query' => $query
+                ]
+            ]);
+        } catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -319,29 +386,29 @@ class Vtiger
      *
      * @param string $id
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function retrieve($id)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request to retrieve a record
-        $response = $this->client->request('GET', $this->url, [
-            'query' => [
-                'operation' => 'retrieve',
-                'sessionName' => $sessionId,
-                'id' => $id
-            ]
-        ]);
+        try {
+            // send a request to retrieve a record
+            $response = $this->guzzleClient->request('GET', $this->url, [
+                'query' => [
+                    'operation' => 'retrieve',
+                    'sessionName' => $sessionId,
+                    'id' => $id
+                ]
+            ]);
+        }  catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -360,30 +427,30 @@ class Vtiger
      * @param string $elem
      * @param string $data
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function create($elem, $data)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request to create a record
-        $response = $this->client->request('POST', $this->url, [
-            'form_params' => [
-                'operation' => 'create',
-                'sessionName' => $sessionId,
-                'element' => $data,
-                'elementType' => $elem
-            ]
-        ]);
+        try {
+            // send a request to create a record
+            $response = $this->guzzleClient->request('POST', $this->url, [
+                'form_params' => [
+                    'operation' => 'create',
+                    'sessionName' => $sessionId,
+                    'element' => $data,
+                    'elementType' => $elem
+                ]
+            ]);
+        }  catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -391,62 +458,62 @@ class Vtiger
      *
      * The object should be an object retreived from the database and then altered
      *
-     * @param $object
+     * @param \stdClass $object
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function update($object)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request to update a record
-        $response = $this->client->request('POST', $this->url, [
-            'form_params' => [
-                'operation' => 'update',
-                'sessionName' => $sessionId,
-                'element' => json_encode($object),
-            ]
-        ]);
+        try {
+            // send a request to update a record
+            $response = $this->guzzleClient->request('POST', $this->url, [
+                'form_params' => [
+                    'operation' => 'update',
+                    'sessionName' => $sessionId,
+                    'element' => json_encode($object),
+                ]
+            ]);
+        }  catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
      * Delete from the database using the given id
      * Format of id must be {moudler_code}x{item_id}, e.g 4x12
      *
-     * @param $id
+     * @param string $id
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function delete($id)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request to delete a record
-        $response = $this->client->request('GET', $this->url, [
-            'query' => [
-                'operation' => 'delete',
-                'sessionName' => $sessionId,
-                'id' => $id
-            ]
-        ]);
+        try {
+            // send a request to delete a record
+            $response = $this->guzzleClient->request('GET', $this->url, [
+                'query' => [
+                    'operation' => 'delete',
+                    'sessionName' => $sessionId,
+                    'id' => $id
+                ]
+            ]);
+        } catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -454,29 +521,30 @@ class Vtiger
      *
      * @param string $elementType
      *
-     * @return object
-     * @throws GuzzleException
+     * @return \stdClass
      * @throws VtigerError
-     * @throws \Illuminate\Contracts\Filesystem\FileNotFoundException
      */
     public function describe($elementType)
     {
-
         $sessionId = $this->sessionId();
 
-        // send a request to describe a module (which returns a list of available fields) for a Vtiger module
-        $response = $this->client->request('GET', $this->url, [
-            'query' => [
-                'operation' => 'describe',
-                'sessionName' => $sessionId,
-                'elementType' => $elementType
-            ]
-        ]);
+        try {
+            // send a request to describe a module (which returns a list of available fields) for a Vtiger module
+            $response = $this->guzzleClient->request(
+                'GET', $this->url, [
+                'query' => [
+                    'operation' => 'describe',
+                    'sessionName' => $sessionId,
+                    'elementType' => $elementType
+                ]
+            ]);
+        } catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
 
         $this->close($sessionId);
 
         return $this->_processResult($response);
-
     }
 
     /**
@@ -484,18 +552,17 @@ class Vtiger
      *
      * @param mixed|ResponseInterface $response
      *
-     * @return object
+     * @return \stdClass
      * @throws VtigerError
      */
     protected function _processResult($response)
     {
-
         $this->_checkResponseStatusCode($response);
 
         $data = $this->_processResponse($response);
 
         if (!isset($data->success)) {
-            throw new VtigerError("Success property not set on VTiger response", 2);
+            throw VtigerError::init($this->vTigerErrors, 2);
         }
 
         if ($data->success == false) {
@@ -503,7 +570,6 @@ class Vtiger
         }
 
         return $data;
-
     }
 
     /**
@@ -511,11 +577,10 @@ class Vtiger
      *
      * @param ResponseInterface $response
      *
-     * @return object
+     * @return \stdClass
      */
     protected function _processResponse($response)
     {
-
         // decode the response
         if (!empty($response->getBody()->getContents())) {
             $response->getBody()->rewind();
@@ -525,7 +590,6 @@ class Vtiger
         }
 
         return $data;
-
     }
 
     /**
@@ -537,29 +601,25 @@ class Vtiger
      */
     protected function _checkResponseStatusCode($response)
     {
-
         if ($response->getStatusCode() !== 200) {
-            throw new VtigerError("API request did not complete correctly - Response code: ".$response->getStatusCode(), 1);
+            throw VtigerError::init($this->vTigerErrors, 1);
         }
-
     }
 
     /**
      * Process any errors that we have got back
      *
-     * @param object $processedData
+     * @param \stdClass $processedData
      *
      * @throws VtigerError
      */
     protected function _processResponseError($processedData)
     {
-
         if (!isset($processedData->error)) {
-            throw new VtigerError("Error property not set on VTiger response when success is false", 3);
+            throw VtigerError::init($this->vTigerErrors, 3);
         }
 
-        throw new VtigerError($processedData->error->message, 4, $processedData->error->code);
-
+        throw VtigerError::init($this->vTigerErrors, 0, $processedData->error->message);
     }
 
 }
