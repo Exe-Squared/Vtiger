@@ -5,7 +5,6 @@ namespace Clystnet\Vtiger;
 use GuzzleHttp\Exception\GuzzleException;
 use GuzzleHttp\Client;
 use InvalidArgumentException;
-use Mockery\CountValidator\Exception;
 use Psr\Http\Message\ResponseInterface;
 use Config;
 use Cache;
@@ -18,7 +17,6 @@ use Cache;
  */
 class Vtiger
 {
-
     /** @var VtigerErrorElement[] */
     private $vTigerErrors;
 
@@ -104,16 +102,10 @@ class Vtiger
         // Get the sessionData from the cache
         $sessionData = json_decode(Cache::get('clystnet_vtiger'));
 
-        if (!$sessionData) {
-            throw VtigerError::init($this->vTigerErrors, 8, 'Could not get the session data from index clystnet_vtiger');
-        }
-
         if (isset($sessionData)) {
-            if (
-                isset($sessionData) &&
+            if (isset($sessionData) &&
                 property_exists($sessionData, 'expireTime') &&
-                property_exists($sessionData, 'token')
-            ) {
+                property_exists($sessionData, 'token')) {
                 if ($sessionData->expireTime < time() || empty($sessionData->token)) {
                     $sessionData = $this->storeSession();
                 }
@@ -172,13 +164,13 @@ class Vtiger
         } while (!isset($loginResult->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
-            throw new VtigerError("Could not complete login request within " . $this->maxRetries . " tries", 5);
+            throw new VtigerError('Could not complete login request within ' . $this->maxRetries . ' tries', 5);
         }
 
         // If api login failed
         if ($response->getStatusCode() !== 200 || !$loginResult->success) {
             if (!$loginResult->success) {
-                if ($loginResult->error->code == "INVALID_USER_CREDENTIALS" || $loginResult->error->code == "INVALID_SESSIONID") {
+                if ($loginResult->error->code == 'INVALID_USER_CREDENTIALS' || $loginResult->error->code == 'INVALID_SESSIONID') {
                     if (!Cache::has('clystnet_vtiger')) {
                         throw VtigerError::init($this->vTigerErrors, 8, 'Nothing to delete for index clystnet_vtiger');
                     } else {
@@ -193,7 +185,6 @@ class Vtiger
         } else {
             // login ok so get sessionid and update our session
             $sessionId = $loginResult->result->sessionName;
-
 
             if (Cache::has('clystnet_vtiger')) {
                 $json = json_decode(Cache::pull('clystnet_vtiger'));
@@ -219,9 +210,6 @@ class Vtiger
 
         $output = (object)$updated;
         $cacheResult = Cache::forever('clystnet_vtiger', json_encode($output));
-        if (!$cacheResult) {
-            throw VtigerError::init($this->vTigerErrors, 8, 'Could not set the session data in index clystnet_vtiger');
-        }
 
         return $output;
     }
@@ -252,17 +240,17 @@ class Vtiger
         } while (!isset($this->_processResponse($response)->success) && $tryCounter <= $this->maxRetries);
 
         if ($tryCounter >= $this->maxRetries) {
-            throw new VtigerError("Could not complete get token request within " . $this->maxRetries . " tries", 6);
+            throw new VtigerError('Could not complete get token request within ' . $this->maxRetries . ' tries', 6);
         }
 
         // decode the response
         $challenge = $this->_processResult($response);
 
         // Everything ok so create a token from response
-        $output = array(
+        $output = [
             'token' => $challenge->result->token,
             'expireTime' => $challenge->result->expireTime,
-        );
+        ];
 
         return $output;
     }
@@ -287,11 +275,11 @@ class Vtiger
                 'POST',
                 $this->url,
                 [
-                'query' => [
-                    'operation' => 'logout',
-                    'sessionName' => $sessionId
+                    'query' => [
+                        'operation' => 'logout',
+                        'sessionName' => $sessionId
+                    ]
                 ]
-            ]
             );
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -484,12 +472,12 @@ class Vtiger
                 'GET',
                 $this->url,
                 [
-                'query' => [
-                    'operation' => 'describe',
-                    'sessionName' => $sessionId,
-                    'elementType' => $elementType
+                    'query' => [
+                        'operation' => 'describe',
+                        'sessionName' => $sessionId,
+                        'elementType' => $elementType
+                    ]
                 ]
-            ]
             );
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
