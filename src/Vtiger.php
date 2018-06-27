@@ -8,6 +8,7 @@ use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 use Config;
 use Cache;
+use DB;
 
 /**
  * Laravel wrapper for the VTgier API
@@ -57,6 +58,7 @@ class Vtiger
             1 => new VtigerErrorElement('API request did not complete correctly - Response code: ', 1),
             2 => new VtigerErrorElement('Success property not set on VTiger response', 2),
             3 => new VtigerErrorElement('Error property not set on VTiger response when success is false', 3),
+            4 => new VtigerErrorElement('There are no search fields in the array', 4),
             5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
             6 => new VtigerErrorElement(
                 'Could not complete get token request within ' . $this->maxRetries . ' tries',
@@ -316,6 +318,27 @@ class Vtiger
         $this->close($sessionId);
 
         return $this->_processResult($response);
+    }
+
+    public function search($module, $array)
+    {
+        if (empty($array) || !$module) {
+            throw VtigerError::init($this->vTigerErrors, 4);
+        }
+
+        $query = DB::table($module);
+        foreach ($array as $item) {
+            $query->where(key($item), $item[key($item)][0], $item[key($item)][1]);
+        }
+
+        $bindings = $query->getBindings();
+        $queryString = $query->toSQL();
+
+        foreach ($bindings as $binding) {
+            $queryString = preg_replace('/\?/', DB::connection()->getPdo()->quote($binding), $queryString, 1);
+        }
+
+        return $this->query($queryString);
     }
 
     /**

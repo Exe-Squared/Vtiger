@@ -5,10 +5,11 @@ Use the Vtiger webservice (REST) API from within Laravel for the following opera
 - Retrieve
 - Update
 - Delete
+- Search
 - Query
 - Describe
 
-See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/vtigercrm/developers/third-party-app-integration.html) 
+See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/vtigercrm/developers/third-party-app-integration.html)
 
 ## Installation, Configuration and Usage
 
@@ -46,7 +47,6 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
 - In your application, edit *config/vtiger.php* and replace the following array values
   - Set the url to the https://{DOMAIN_NAME}/webservice.php
   - Set the username and accesskey with your CRM username and access key.
-  - Set the session drive to either file or reddis
   - Set persistconnection to false if you want a fresh login with each request
 
     |key              |value                                |
@@ -54,7 +54,6 @@ See [Third Party App Integration (REST APIs)](http://community.vtiger.com/help/v
     |url              |http://www.example.com/webservice.php|
     |username         |API                                  |
     |accesskey        |irGsy9HB0YOZdEA                      |
-    |sessiondriver    |file                                 |
     |persistconnection|true                                 |
     |max_retries      |10                                   |
 
@@ -70,7 +69,7 @@ use Vtiger;
 
 #### Create
 
-To insert a record into the CRM, first create an array of data to insert. Don't forget the added the id of the `assigned_user_id` (i.e. '4x12') otherwise the insert will fail as `assigned_user_id` is a mandatory field. 
+To insert a record into the CRM, first create an array of data to insert. Don't forget the added the id of the `assigned_user_id` (i.e. '4x12') otherwise the insert will fail as `assigned_user_id` is a mandatory field.
 ```php
 $data = array(
     'assigned_user_id' => '',
@@ -120,6 +119,25 @@ $obj = Vtiger::retrieve($id);
 
 // do someting with the result
 var_dump($obj);
+```
+
+#### Search
+
+This function is a sql query builder wrapped around the query function.
+```php
+$search = [];
+$search[] = [
+    'firstname' => ['=', 'John'],
+    'lastname' => ['=', 'Smith'],
+    'login_date' => ['>=', '00-00-00 00:00:00'],
+];
+
+$obj = Vtiger::search('Leads', $search);
+
+//loop over result
+foreach($obj->result as $result) {
+    // do something
+}
 ```
 
 #### Query
