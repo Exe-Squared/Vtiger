@@ -123,16 +123,11 @@ var_dump($obj);
 
 #### Search
 
-This function is a sql query builder wrapped around the query function.
+This function is a sql query builder wrapped around the query function. Accepts instance of laravels QueryBuilder.
 ```php
-$search = [];
-$search[] = [
-    'firstname' => ['=', 'John'],
-    'lastname' => ['=', 'Smith'],
-    'login_date' => ['>=', '00-00-00 00:00:00'],
-];
+$query = DB::table('Leads')->select('id', 'firstname', 'lastname')->where('firstname', 'John');
 
-$obj = Vtiger::search('Leads', $search);
+$obj = Vtiger::search('Leads', $query);
 
 //loop over result
 foreach($obj->result as $result) {
@@ -140,6 +135,12 @@ foreach($obj->result as $result) {
 }
 ```
 
+By default the function will quote but not escape your inputs, if you wish for your data to not be quoted, set the 3rd paramater to false like so:
+```php
+$obj = Vtiger::search('Leads', $query, false);
+```
+
+Also keep in mind that Victiger has several limitations on it's sql query capabilities. You can not use conditional grouping i.e "where (firstname = 'John' AND 'lastname = 'Doe') OR (firstname = 'Jane' AND lastname = 'Smith') will fail.
 #### Query
 
 To use the [Query Operation](http://community.vtiger.com/help/vtigercrm/developers/third-party-app-integration.html#query-operation), you first need to create a SQL query.

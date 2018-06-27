@@ -320,23 +320,19 @@ class Vtiger
         return $this->_processResult($response);
     }
 
-    public function search($module, $array)
+    public function search($query, $quote = true)
     {
-        if (empty($array) || !$module) {
-            throw VtigerError::init($this->vTigerErrors, 4);
-        }
-
-        $query = DB::table($module);
-        foreach ($array as $item) {
-            $query->where(key($item), $item[key($item)][0], $item[key($item)][1]);
-        }
-
         $bindings = $query->getBindings();
         $queryString = $query->toSQL();
 
         foreach ($bindings as $binding) {
-            $queryString = preg_replace('/\?/', DB::connection()->getPdo()->quote($binding), $queryString, 1);
+            if ($quote) {
+                $queryString = preg_replace('/\?/', DB::connection()->getPdo()->quote($binding), $queryString, 1);
+            } else {
+                $queryString = preg_replace('/\?/', $binding, $queryString, 1);
+            }
         }
+        $queryString = str_replace('`', '', $queryString) . ';';
 
         return $this->query($queryString);
     }
@@ -582,7 +578,7 @@ class Vtiger
         if (!isset($processedData->error)) {
             throw VtigerError::init($this->vTigerErrors, 3);
         }
-
+        dd($processedData);
         throw VtigerError::init($this->vTigerErrors, 0, $processedData->error->message);
     }
 }
