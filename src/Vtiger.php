@@ -59,7 +59,7 @@ class Vtiger
             2 => new VtigerErrorElement('Success property not set on VTiger response', 2),
             3 => new VtigerErrorElement('Error property not set on VTiger response when success is false', 3),
             4 => new VtigerErrorElement('There are no search fields in the array', 4),
-            5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
+                5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
             6 => new VtigerErrorElement(
                 'Could not complete get token request within ' . $this->maxRetries . ' tries',
                 6
@@ -191,7 +191,7 @@ class Vtiger
             if (Cache::has('clystnet_vtiger')) {
                 $json = json_decode(Cache::pull('clystnet_vtiger'));
                 $json->sessionid = $sessionId;
-                Cache::forever('clystnetVtiger', json_encode($json));
+                Cache::forever('clystnet_vtiger', json_encode($json));
             } else {
                 throw VtigerError::init($this->vTigerErrors, 8, 'There is no key for index clystnet_vtiger.');
             }
