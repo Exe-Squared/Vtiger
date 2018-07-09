@@ -578,7 +578,6 @@ class Vtiger
         if (!isset($processedData->error)) {
             throw VtigerError::init($this->vTigerErrors, 3);
         }
-        dd($processedData);
         throw VtigerError::init($this->vTigerErrors, 0, $processedData->error->message);
     }
 }
