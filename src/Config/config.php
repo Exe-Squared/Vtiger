@@ -5,7 +5,6 @@ return [
     'url' => 'path/to/vtiger/webservice.php',
     'username' => '',
     'accesskey' => '',
-    'sessiondriver' => 'file', //reddis or file
     'persistconnection' => true,
     'max_retries' => 10
 ];
