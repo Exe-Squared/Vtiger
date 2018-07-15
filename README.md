@@ -140,7 +140,9 @@ By default the function will quote but not escape your inputs, if you wish for y
 $obj = Vtiger::search('Leads', $query, false);
 ```
 
-Also keep in mind that Victiger has several limitations on it's sql query capabilities. You can not use conditional grouping i.e "where (firstname = 'John' AND 'lastname = 'Doe') OR (firstname = 'Jane' AND lastname = 'Smith') will fail.
+Also keep in mind that Vtiger has several limitations on it's sql query capabilities. You can not use conditional grouping i.e "where (firstname = 'John' AND 'lastname = 'Doe') OR (firstname = 'Jane' AND lastname = 'Smith') will fail.
+
+
 #### Query
 
 To use the [Query Operation](http://community.vtiger.com/help/vtigercrm/developers/third-party-app-integration.html#query-operation), you first need to create a SQL query.
