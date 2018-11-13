@@ -584,7 +584,7 @@ class Vtiger
      * @param \stdClass $processedData
      *
      * @throws VtigerError
-     */i
+     */
     protected function _processResponseError($processedData)
     {
         if (!isset($processedData->error)) {
