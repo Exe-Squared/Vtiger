@@ -59,7 +59,7 @@ class Vtiger
             2 => new VtigerErrorElement('Success property not set on VTiger response', 2),
             3 => new VtigerErrorElement('Error property not set on VTiger response when success is false', 3),
             4 => new VtigerErrorElement('There are no search fields in the array', 4),
-                5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
+            5 => new VtigerErrorElement('Could not complete login request within ' . $this->maxRetries . ' tries', 5),
             6 => new VtigerErrorElement(
                 'Could not complete get token request within ' . $this->maxRetries . ' tries',
                 6
@@ -153,8 +153,8 @@ class Vtiger
                     'form_params' => [
                         'operation' => 'login',
                         'username' => $this->username,
-                        'accessKey' => $generatedKey
-                    ]
+                        'accessKey' => $generatedKey,
+                    ],
                 ]);
             } catch (GuzzleException $e) {
                 throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -231,8 +231,8 @@ class Vtiger
                 $response = $this->guzzleClient->request('GET', $this->url, [
                     'query' => [
                         'operation' => 'getchallenge',
-                        'username' => $this->username
-                    ]
+                        'username' => $this->username,
+                    ],
                 ]);
             } catch (GuzzleException $e) {
                 throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -279,8 +279,8 @@ class Vtiger
                 [
                     'query' => [
                         'operation' => 'logout',
-                        'sessionName' => $sessionId
-                    ]
+                        'sessionName' => $sessionId,
+                    ],
                 ]
             );
         } catch (GuzzleException $e) {
@@ -308,8 +308,8 @@ class Vtiger
                 'query' => [
                     'operation' => 'query',
                     'sessionName' => $sessionId,
-                    'query' => $query
-                ]
+                    'query' => $query,
+                ],
             ]);
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -332,6 +332,18 @@ class Vtiger
                 $queryString = preg_replace('/\?/', $binding, $queryString, 1);
             }
         }
+
+        //In the event there is a offset, append it to the front of the limit
+        //Vtiger does not support the offset keyword
+        $matchOffset = [];
+        $matchLimit = [];
+        if (preg_match('/(\s[o][f][f][s][e][t]) (\d*)/', $queryString, $matchOffset) && preg_match('/(\s[l][i][m][i][t]) (\d*)/', $queryString, $matchLimit)) {
+            $queryString = preg_replace('/(\s[o][f][f][s][e][t]) (\d*)/', '', $queryString);
+            $queryString = preg_replace('/(\s[l][i][m][i][t]) (\d*)/', '', $queryString);
+            $queryString = $queryString . ' limit ' . $matchOffset[2] . ',' . $matchLimit[2];
+        }
+
+        //Remove the backticks and add simicolon
         $queryString = str_replace('`', '', $queryString) . ';';
 
         return $this->query($queryString);
@@ -356,8 +368,8 @@ class Vtiger
                 'query' => [
                     'operation' => 'retrieve',
                     'sessionName' => $sessionId,
-                    'id' => $id
-                ]
+                    'id' => $id,
+                ],
             ]);
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -398,8 +410,8 @@ class Vtiger
                     'operation' => 'create',
                     'sessionName' => $sessionId,
                     'element' => $data,
-                    'elementType' => $elem
-                ]
+                    'elementType' => $elem,
+                ],
             ]);
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -431,7 +443,7 @@ class Vtiger
                     'operation' => 'update',
                     'sessionName' => $sessionId,
                     'element' => json_encode($object),
-                ]
+                ],
             ]);
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -461,8 +473,8 @@ class Vtiger
                 'query' => [
                     'operation' => 'delete',
                     'sessionName' => $sessionId,
-                    'id' => $id
-                ]
+                    'id' => $id,
+                ],
             ]);
         } catch (GuzzleException $e) {
             throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
@@ -494,8 +506,8 @@ class Vtiger
                     'query' => [
                         'operation' => 'describe',
                         'sessionName' => $sessionId,
-                        'elementType' => $elementType
-                    ]
+                        'elementType' => $elementType,
+                    ],
                 ]
             );
         } catch (GuzzleException $e) {
