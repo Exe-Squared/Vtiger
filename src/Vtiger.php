@@ -343,15 +343,50 @@ class Vtiger
             $queryString = $queryString . ' limit ' . $matchOffset[2] . ',' . $matchLimit[2];
         }
 
-        //Remove the backticks and add simicolon
+        //Remove the backticks and add semicolon
         $queryString = str_replace('`', '', $queryString) . ';';
 
         return $this->query($queryString);
     }
 
+    public function lookup($dataType, $value, $module, $columns)
+    {
+        $sessionId = $this->sessionId();
+
+        //Update columns into the proper format
+        $columnsText = '';
+        foreach ($columns as $column) {
+            $columnsText .= '"'.$column.'",';
+        }
+
+        //Trim the last comma from the string
+        $columnsText = substr($columnsText, 0, (strlen($columnsText) - 1));
+
+        //Lookup the data
+        try {
+            // send a request to retrieve a record
+            $response = $this->guzzleClient->request('GET', $this->url, [
+                'query' => [
+                    'operation' => 'lookup',
+                    'sessionName' => $sessionId,
+                    'type' => $dataType,
+                    'value' => $value,
+                    'searchIn' => '{"'.$module.'":['.$columnsText.']}',
+                ],
+            ]);
+
+        } catch (GuzzleException $e) {
+            throw VtigerError::init($this->vTigerErrors, 7, $e->getMessage());
+        }
+
+        $this->close($sessionId);
+
+        return $this->_processResult($response);
+    }
+
     /**
-     * Retreive a record from the VTiger API
-     * Format of id must be {moudler_code}x{item_id}, e.g 4x12
+     * Retrieve a record from the VTiger API
+     * Format of id must be {module_code}x{item_id}, e.g 4x12
      *
      * @param string $id
      *

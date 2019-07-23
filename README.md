@@ -121,6 +121,20 @@ $obj = Vtiger::retrieve($id);
 var_dump($obj);
 ```
 
+#### Lookup
+
+This function uses the Vtiger Lookup API endpoint to search for a single piece of information within multiple columns of a Vtiger module. This function is often multitudes faster than the search function.
+
+
+```php
+    $dataType = 'phone';
+    $phoneNumber = '1234567890';
+    $module = 'Leads';
+    $columns = ['phone', 'fax']; //Must be an array
+    
+    Vtiger::lookup($dataType, $phoneNumber, $module, $columns);
+```
+
 #### Search
 
 This function is a sql query builder wrapped around the query function. Accepts instance of laravels QueryBuilder.
