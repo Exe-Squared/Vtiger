@@ -23,6 +23,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "Chris-Pratt-Clystnet",
+      "name": "Christopher Pratt",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/40233133?v=4",
+      "profile": "https://www.clystnet.com/",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
