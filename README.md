@@ -1,4 +1,7 @@
 ﻿# Vtiger (Laravel 5 Package)
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
 Use the Vtiger webservice (REST) API from within Laravel for the following operations.
 
 - Create
@@ -194,3 +197,22 @@ Please report any issue you find in the issues page. Pull requests are more than
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tr>
+    <td align="center"><a href="https://github.com/cjcox17"><img src="https://avatars0.githubusercontent.com/u/1725282?v=4" width="100px;" alt=""/><br /><sub><b>Clyde Cox</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=cjcox17" title="Code">💻</a></td>
+  </tr>
+</table>
+
+<!-- markdownlint-enable -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
