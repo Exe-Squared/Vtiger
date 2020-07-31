@@ -1,0 +1,24 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "cjcox17",
+      "name": "Clyde Cox",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/1725282?v=4",
+      "profile": "https://github.com/cjcox17",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "Vtiger",
+  "projectOwner": "Clystnet",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
