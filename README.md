@@ -207,6 +207,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 <!-- markdownlint-disable -->
 <table>
   <tr>
+    <td align="center"><a href="https://github.com/cjcox17"><img src="https://avatars0.githubusercontent.com/u/1725282?v=4" width="100px;" alt=""/><br /><sub><b>Clyde Cox</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=cjcox17" title="Code">💻</a></td>
     <td align="center"><a href="https://www.syamim.ascube.net/"><img src="https://avatars0.githubusercontent.com/u/14102774?v=4" width="100px;" alt=""/><br /><sub><b>Ahmad Syamim</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=ahmadsyamim" title="Code">💻</a></td>
   </tr>
 </table>
