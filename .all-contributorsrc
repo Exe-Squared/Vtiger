@@ -1,0 +1,24 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "contributors": [
+    {
+      "login": "ahmadsyamim",
+      "name": "Ahmad Syamim",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/14102774?v=4",
+      "profile": "https://www.syamim.ascube.net/",
+      "contributions": [
+        "code"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "projectName": "Vtiger",
+  "projectOwner": "Clystnet",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "skipCi": true
+}
