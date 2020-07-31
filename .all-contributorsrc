@@ -6,6 +6,15 @@
   "commit": false,
   "contributors": [
     {
+      "login": "ahmadsyamim",
+      "name": "Ahmad Syamim",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/14102774?v=4",
+      "profile": "https://www.syamim.ascube.net/",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
       "login": "cjcox17",
       "name": "Clyde Cox",
       "avatar_url": "https://avatars0.githubusercontent.com/u/1725282?v=4",
