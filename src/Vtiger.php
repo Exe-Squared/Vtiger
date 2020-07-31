@@ -504,8 +504,8 @@ class Vtiger
 
         try {
             // send a request to delete a record
-            $response = $this->guzzleClient->request('GET', $this->url, [
-                'query' => [
+            $response = $this->guzzleClient->request('POST', $this->url, [
+                'form_params' => [
                     'operation' => 'delete',
                     'sessionName' => $sessionId,
                     'id' => $id,
