@@ -1,6 +1,6 @@
 ﻿# Vtiger (Laravel 5 Package)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-[![All Contributors](https://img.shields.io/badge/all_contributors-2-orange.svg?style=flat-square)](#contributors-)
+[![All Contributors](https://img.shields.io/badge/all_contributors-3-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
 Use the Vtiger webservice (REST) API from within Laravel for the following operations.
 
@@ -209,6 +209,7 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
   <tr>
     <td align="center"><a href="https://www.syamim.ascube.net/"><img src="https://avatars0.githubusercontent.com/u/14102774?v=4" width="100px;" alt=""/><br /><sub><b>Ahmad Syamim</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=ahmadsyamim" title="Code">💻</a></td>
     <td align="center"><a href="https://github.com/cjcox17"><img src="https://avatars0.githubusercontent.com/u/1725282?v=4" width="100px;" alt=""/><br /><sub><b>Clyde Cox</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=cjcox17" title="Code">💻</a> <a href="https://github.com/Clystnet/Vtiger/commits?author=cjcox17" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://www.clystnet.com/"><img src="https://avatars2.githubusercontent.com/u/40233133?v=4" width="100px;" alt=""/><br /><sub><b>Christopher Pratt</b></sub></a><br /><a href="https://github.com/Clystnet/Vtiger/commits?author=Chris-Pratt-Clystnet" title="Code">💻</a> <a href="https://github.com/Clystnet/Vtiger/commits?author=Chris-Pratt-Clystnet" title="Documentation">📖</a></td>
   </tr>
 </table>
 
