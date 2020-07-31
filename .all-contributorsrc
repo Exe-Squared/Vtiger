@@ -33,6 +33,16 @@
         "code",
         "doc"
       ]
+    },
+    {
+      "login": "adam-godfrey",
+      "name": "adam-godfrey",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/6408143?v=4",
+      "profile": "https://github.com/adam-godfrey",
+      "contributions": [
+        "code",
+        "doc"
+      ]
     }
   ],
   "contributorsPerLine": 7,
