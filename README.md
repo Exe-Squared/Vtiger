@@ -1,4 +1,7 @@
-﻿# Vtiger (Laravel 5 Package)
+﻿# This package is deprecated 
+ ### Here at Clystnet We no longer maintain the Open Source version of this package. We do however maintain our in house version of this package which you talk to us about using by contacting sales@clystnet.com.
+ 
+ # Vtiger (Laravel 5 Package)
 <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
 [![All Contributors](https://img.shields.io/badge/all_contributors-4-orange.svg?style=flat-square)](#contributors-)
 <!-- ALL-CONTRIBUTORS-BADGE:END -->
